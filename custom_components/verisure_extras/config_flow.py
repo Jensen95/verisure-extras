@@ -2,6 +2,7 @@
 # ABOUTME: The PIN is only ever kept in the config entry data, never logged.
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import voluptuous as vol
@@ -20,6 +21,8 @@ from .const import (
     DEFAULT_ALARM_ENTITY,
     DOMAIN,
 )
+
+PIN_PATTERN = re.compile(r"\d{4,8}")
 
 USER_SCHEMA = vol.Schema(
     {
@@ -42,6 +45,11 @@ class VerisureExtrasConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Ask for the source alarm entity and the PIN."""
+        errors: dict[str, str] = {}
         if user_input is not None:
-            return self.async_create_entry(title="Verisure Extras", data=user_input)
-        return self.async_show_form(step_id="user", data_schema=USER_SCHEMA)
+            if PIN_PATTERN.fullmatch(user_input[CONF_PIN]):
+                return self.async_create_entry(title="Verisure Extras", data=user_input)
+            errors[CONF_PIN] = "invalid_pin"
+        return self.async_show_form(
+            step_id="user", data_schema=USER_SCHEMA, errors=errors
+        )
