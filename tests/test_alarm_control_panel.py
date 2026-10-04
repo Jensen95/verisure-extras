@@ -102,3 +102,15 @@ async def test_arm_forwards_stored_pin(
 
     assert len(calls) == 1
     assert calls[0].data == {"entity_id": SOURCE_ENTITY, "code": FAKE_PIN}
+
+
+async def test_disarm_uses_stored_pin_by_default(
+    hass: HomeAssistant, init_integration
+) -> None:
+    """With passwordless disarm on (the default) the stored PIN is used."""
+    calls = async_mock_service(hass, "alarm_control_panel", "alarm_disarm")
+
+    await get_wrapper(hass).async_alarm_disarm()
+
+    assert len(calls) == 1
+    assert calls[0].data == {"entity_id": SOURCE_ENTITY, "code": FAKE_PIN}

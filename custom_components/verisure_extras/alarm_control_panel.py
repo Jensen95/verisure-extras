@@ -102,3 +102,7 @@ class VerisureExtrasAlarm(AlarmControlPanelEntity):
             {ATTR_ENTITY_ID: self._source_entity_id, ATTR_CODE: code},
             blocking=True,
         )
+
+    async def async_alarm_disarm(self, code: str | None = None) -> None:
+        """Disarm the source alarm using the stored PIN."""
+        await self._async_call_source("alarm_disarm", self._entry.data[CONF_PIN])
