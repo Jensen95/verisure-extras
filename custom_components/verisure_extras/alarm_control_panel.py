@@ -3,18 +3,20 @@
 from __future__ import annotations
 
 from homeassistant.components.alarm_control_panel import (
+    ATTR_CODE,
+    DOMAIN as ALARM_DOMAIN,
     AlarmControlPanelEntity,
     AlarmControlPanelEntityFeature,
     AlarmControlPanelState,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
+from homeassistant.const import ATTR_ENTITY_ID, STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import Event, EventStateChangedData, HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
 
-from .const import CONF_ALARM_ENTITY, DOMAIN
+from .const import CONF_ALARM_ENTITY, CONF_PIN, DOMAIN
 
 
 async def async_setup_entry(
@@ -83,3 +85,20 @@ class VerisureExtrasAlarm(AlarmControlPanelEntity):
             return
         self._attr_available = True
         self._attr_changed_by = source.attributes.get("changed_by")
+
+    async def async_alarm_arm_home(self, code: str | None = None) -> None:
+        """Arm the source alarm in home mode using the stored PIN."""
+        await self._async_call_source("alarm_arm_home", self._entry.data[CONF_PIN])
+
+    async def async_alarm_arm_away(self, code: str | None = None) -> None:
+        """Arm the source alarm in away mode using the stored PIN."""
+        await self._async_call_source("alarm_arm_away", self._entry.data[CONF_PIN])
+
+    async def _async_call_source(self, service: str, code: str) -> None:
+        """Call an alarm_control_panel service on the source entity."""
+        await self.hass.services.async_call(
+            ALARM_DOMAIN,
+            service,
+            {ATTR_ENTITY_ID: self._source_entity_id, ATTR_CODE: code},
+            blocking=True,
+        )

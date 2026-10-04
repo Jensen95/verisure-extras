@@ -3,8 +3,13 @@
 import pytest
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import async_get_platforms
 
-from .conftest import SOURCE_ENTITY
+from pytest_homeassistant_custom_component.common import async_mock_service
+
+from custom_components.verisure_extras.const import DOMAIN
+
+from .conftest import FAKE_PIN, SOURCE_ENTITY
 
 ENTITY_ID = "alarm_control_panel.verisure_alarm_no_pin"
 
@@ -74,3 +79,26 @@ async def test_entity_has_own_device_and_no_code(
     assert entry.unique_id == init_integration.entry_id
     device = device_registry.async_get(entry.device_id)
     assert device.name == "Verisure Alarm (no PIN)"
+
+
+def get_wrapper(hass: HomeAssistant):
+    """Return the wrapper entity object.
+
+    The wrapper and the source share the same service names, so the tests mock the
+    source services and call the wrapper's methods directly instead of via services.
+    """
+    (platform,) = async_get_platforms(hass, DOMAIN)
+    return platform.entities[ENTITY_ID]
+
+
+@pytest.mark.parametrize("action", ["arm_home", "arm_away"])
+async def test_arm_forwards_stored_pin(
+    hass: HomeAssistant, init_integration, action: str
+) -> None:
+    """Arming without a code calls the source with the stored PIN."""
+    calls = async_mock_service(hass, "alarm_control_panel", f"alarm_{action}")
+
+    await getattr(get_wrapper(hass), f"async_alarm_{action}")()
+
+    assert len(calls) == 1
+    assert calls[0].data == {"entity_id": SOURCE_ENTITY, "code": FAKE_PIN}
