@@ -1,0 +1,14 @@
+{
+  "domain": "verisure_extras",
+  "name": "Verisure Extras",
+  "after_dependencies": ["verisure"],
+  "codeowners": ["@Jensen95"],
+  "config_flow": true,
+  "documentation": "https://github.com/Jensen95/verisure-extras",
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/Jensen95/verisure-extras/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "0.1.0"
+}
