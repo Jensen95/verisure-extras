@@ -1,0 +1,50 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Verisure Extras",
+        "description": "Choose the Verisure alarm and enter its PIN once. The PIN is stored in this config entry and used for every arm and disarm.",
+        "data": {
+          "alarm_entity": "Alarm entity",
+          "pin": "Alarm PIN"
+        },
+        "data_description": {
+          "alarm_entity": "The alarm control panel from the built-in Verisure integration.",
+          "pin": "4 to 8 digits."
+        }
+      }
+    },
+    "error": {
+      "invalid_pin": "The PIN must be 4 to 8 digits."
+    },
+    "abort": {
+      "single_instance_allowed": "Verisure Extras is already configured. Only one instance is allowed."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Verisure Extras options",
+        "data": {
+          "allow_disarm_without_pin": "Allow disarm without a code",
+          "pin": "New alarm PIN"
+        },
+        "data_description": {
+          "allow_disarm_without_pin": "When off, disarming requires you to enter the code each time.",
+          "pin": "Leave empty to keep the current PIN."
+        }
+      }
+    },
+    "error": {
+      "invalid_pin": "The PIN must be 4 to 8 digits."
+    }
+  },
+  "exceptions": {
+    "code_required": {
+      "message": "A code is required to disarm the alarm."
+    },
+    "source_call_failed": {
+      "message": "The alarm {entity_id} rejected the {action} request. Check the PIN in the Verisure Extras options and the state of the alarm."
+    }
+  }
+}
