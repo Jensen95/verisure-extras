@@ -3,7 +3,8 @@
 import pytest
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ServiceValidationError
+import voluptuous as vol
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.entity_platform import async_get_platforms
 from pytest_homeassistant_custom_component.common import async_mock_service
 
@@ -157,3 +158,37 @@ async def test_disarm_without_code_rejected_when_pinless_disarm_off(
 
     assert calls == []
     assert FAKE_PIN not in str(err.value)
+
+
+@pytest.mark.parametrize("action", ["arm_home", "arm_away", "disarm"])
+@pytest.mark.parametrize(
+    "error",
+    [
+        HomeAssistantError(f"Wrong code {FAKE_PIN}"),
+        ServiceValidationError(f"Invalid code {FAKE_PIN}"),
+        vol.Invalid(f"expected code {FAKE_PIN}"),
+    ],
+)
+async def test_source_error_does_not_leak_pin(
+    hass: HomeAssistant,
+    init_integration,
+    caplog: pytest.LogCaptureFixture,
+    action: str,
+    error: Exception,
+) -> None:
+    """Errors from the source become HomeAssistantError without the PIN."""
+
+    async def failing(call) -> None:
+        raise error
+
+    hass.services.async_register("alarm_control_panel", f"alarm_{action}", failing)
+
+    with pytest.raises(HomeAssistantError) as err:
+        await getattr(get_wrapper(hass), f"async_alarm_{action}")()
+
+    assert FAKE_PIN not in str(err.value)
+    assert FAKE_PIN not in repr(err.value)
+    assert FAKE_PIN not in repr(err.value.translation_placeholders)
+    assert err.value.__cause__ is None
+    assert err.value.__suppress_context__
+    assert FAKE_PIN not in caplog.text

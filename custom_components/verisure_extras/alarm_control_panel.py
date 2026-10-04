@@ -2,6 +2,7 @@
 # ABOUTME: Mirrors the source alarm's state and injects the stored PIN into service calls.
 from __future__ import annotations
 
+import voluptuous as vol
 from homeassistant.components.alarm_control_panel import (
     ATTR_CODE,
     AlarmControlPanelEntity,
@@ -15,7 +16,7 @@ from homeassistant.components.alarm_control_panel import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ENTITY_ID, STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import Event, EventStateChangedData, HomeAssistant, callback
-from homeassistant.exceptions import ServiceValidationError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
@@ -109,15 +110,6 @@ class VerisureExtrasAlarm(AlarmControlPanelEntity):
         """Arm the source alarm in away mode using the stored PIN."""
         await self._async_call_source("alarm_arm_away", self._entry.data[CONF_PIN])
 
-    async def _async_call_source(self, service: str, code: str) -> None:
-        """Call an alarm_control_panel service on the source entity."""
-        await self.hass.services.async_call(
-            ALARM_DOMAIN,
-            service,
-            {ATTR_ENTITY_ID: self._source_entity_id, ATTR_CODE: code},
-            blocking=True,
-        )
-
     async def async_alarm_disarm(self, code: str | None = None) -> None:
         """Disarm the source alarm, with the stored PIN or the caller's code."""
         if self._allow_disarm_without_pin:
@@ -128,3 +120,25 @@ class VerisureExtrasAlarm(AlarmControlPanelEntity):
                 translation_key="code_required",
             )
         await self._async_call_source("alarm_disarm", code)
+
+    async def _async_call_source(self, service: str, code: str) -> None:
+        """Call an alarm_control_panel service on the source entity.
+
+        The source's own error text is dropped on purpose: it may echo the code.
+        """
+        try:
+            await self.hass.services.async_call(
+                ALARM_DOMAIN,
+                service,
+                {ATTR_ENTITY_ID: self._source_entity_id, ATTR_CODE: code},
+                blocking=True,
+            )
+        except (HomeAssistantError, vol.Invalid):
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="source_call_failed",
+                translation_placeholders={
+                    "entity_id": self._source_entity_id,
+                    "action": service,
+                },
+            ) from None
