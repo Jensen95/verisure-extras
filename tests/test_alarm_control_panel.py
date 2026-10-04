@@ -3,11 +3,14 @@
 import pytest
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import async_get_platforms
-
 from pytest_homeassistant_custom_component.common import async_mock_service
 
-from custom_components.verisure_extras.const import DOMAIN
+from custom_components.verisure_extras.const import (
+    CONF_ALLOW_DISARM_WITHOUT_PIN,
+    DOMAIN,
+)
 
 from .conftest import FAKE_PIN, SOURCE_ENTITY
 
@@ -114,3 +117,43 @@ async def test_disarm_uses_stored_pin_by_default(
 
     assert len(calls) == 1
     assert calls[0].data == {"entity_id": SOURCE_ENTITY, "code": FAKE_PIN}
+
+
+@pytest.fixture
+async def init_integration_pin_required(
+    hass: HomeAssistant, mock_config_entry
+) -> None:
+    """Set up with passwordless disarm turned off."""
+    hass.states.async_set(SOURCE_ENTITY, "armed_away")
+    mock_config_entry.add_to_hass(hass)
+    hass.config_entries.async_update_entry(
+        mock_config_entry, options={CONF_ALLOW_DISARM_WITHOUT_PIN: False}
+    )
+    await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+
+
+async def test_disarm_requires_user_code_when_pinless_disarm_off(
+    hass: HomeAssistant, init_integration_pin_required
+) -> None:
+    """With passwordless disarm off the caller's code is forwarded, not the stored PIN."""
+    assert hass.states.get(ENTITY_ID).attributes["code_format"] == "number"
+    calls = async_mock_service(hass, "alarm_control_panel", "alarm_disarm")
+
+    await get_wrapper(hass).async_alarm_disarm("9876")
+
+    assert len(calls) == 1
+    assert calls[0].data == {"entity_id": SOURCE_ENTITY, "code": "9876"}
+
+
+async def test_disarm_without_code_rejected_when_pinless_disarm_off(
+    hass: HomeAssistant, init_integration_pin_required
+) -> None:
+    """A missing code is refused and nothing is sent to the source."""
+    calls = async_mock_service(hass, "alarm_control_panel", "alarm_disarm")
+
+    with pytest.raises(ServiceValidationError) as err:
+        await get_wrapper(hass).async_alarm_disarm()
+
+    assert calls == []
+    assert FAKE_PIN not in str(err.value)

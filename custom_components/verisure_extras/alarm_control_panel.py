@@ -4,19 +4,29 @@ from __future__ import annotations
 
 from homeassistant.components.alarm_control_panel import (
     ATTR_CODE,
-    DOMAIN as ALARM_DOMAIN,
     AlarmControlPanelEntity,
     AlarmControlPanelEntityFeature,
     AlarmControlPanelState,
+    CodeFormat,
+)
+from homeassistant.components.alarm_control_panel import (
+    DOMAIN as ALARM_DOMAIN,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ENTITY_ID, STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import Event, EventStateChangedData, HomeAssistant, callback
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
 
-from .const import CONF_ALARM_ENTITY, CONF_PIN, DOMAIN
+from .const import (
+    CONF_ALARM_ENTITY,
+    CONF_ALLOW_DISARM_WITHOUT_PIN,
+    CONF_PIN,
+    DEFAULT_ALLOW_DISARM_WITHOUT_PIN,
+    DOMAIN,
+)
 
 
 async def async_setup_entry(
@@ -39,13 +49,18 @@ class VerisureExtrasAlarm(AlarmControlPanelEntity):
         | AlarmControlPanelEntityFeature.ARM_AWAY
     )
     _attr_code_arm_required = False
-    _attr_code_format = None
 
     def __init__(self, entry: ConfigEntry) -> None:
         """Initialize the entity from a config entry."""
         self._entry = entry
         self._source_entity_id: str = entry.data[CONF_ALARM_ENTITY]
         self._attr_unique_id = entry.entry_id
+        self._allow_disarm_without_pin: bool = entry.options.get(
+            CONF_ALLOW_DISARM_WITHOUT_PIN, DEFAULT_ALLOW_DISARM_WITHOUT_PIN
+        )
+        self._attr_code_format = (
+            None if self._allow_disarm_without_pin else CodeFormat.NUMBER
+        )
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
             name="Verisure Alarm (no PIN)",
@@ -104,5 +119,12 @@ class VerisureExtrasAlarm(AlarmControlPanelEntity):
         )
 
     async def async_alarm_disarm(self, code: str | None = None) -> None:
-        """Disarm the source alarm using the stored PIN."""
-        await self._async_call_source("alarm_disarm", self._entry.data[CONF_PIN])
+        """Disarm the source alarm, with the stored PIN or the caller's code."""
+        if self._allow_disarm_without_pin:
+            code = self._entry.data[CONF_PIN]
+        elif not code:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="code_required",
+            )
+        await self._async_call_source("alarm_disarm", code)
