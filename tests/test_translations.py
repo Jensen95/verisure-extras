@@ -1,5 +1,5 @@
-# ABOUTME: Tests that translations/en.json matches strings.json and covers errors raised.
-# ABOUTME: Guards against drift since custom integrations only ship translations/en.json.
+# ABOUTME: Tests that translations/en.json matches strings.json and covers errors.
+# ABOUTME: Guards against drift; custom integrations only ship translations/en.json.
 import json
 from pathlib import Path
 

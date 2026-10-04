@@ -1,9 +1,9 @@
 # ABOUTME: Tests for the PIN-less wrapper alarm_control_panel entity.
 # ABOUTME: Source alarm services are mocked; the fake PIN 1234 is only used here.
 import pytest
+import voluptuous as vol
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
-import voluptuous as vol
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.entity_platform import async_get_platforms
 from pytest_homeassistant_custom_component.common import async_mock_service
@@ -39,7 +39,7 @@ async def test_mirrors_source_state_and_changed_by(
 async def test_unavailable_when_source_unavailable(
     hass: HomeAssistant, init_integration, source_state: str
 ) -> None:
-    """Unavailable, unknown or unrecognised source states make the wrapper unavailable."""
+    """Unavailable, unknown or unrecognised source states are unavailable."""
     hass.states.async_set(SOURCE_ENTITY, source_state)
     await hass.async_block_till_done()
 
@@ -121,9 +121,7 @@ async def test_disarm_uses_stored_pin_by_default(
 
 
 @pytest.fixture
-async def init_integration_pin_required(
-    hass: HomeAssistant, mock_config_entry
-) -> None:
+async def init_integration_pin_required(hass: HomeAssistant, mock_config_entry) -> None:
     """Set up with passwordless disarm turned off."""
     hass.states.async_set(SOURCE_ENTITY, "armed_away")
     mock_config_entry.add_to_hass(hass)
@@ -137,7 +135,7 @@ async def init_integration_pin_required(
 async def test_disarm_requires_user_code_when_pinless_disarm_off(
     hass: HomeAssistant, init_integration_pin_required
 ) -> None:
-    """With passwordless disarm off the caller's code is forwarded, not the stored PIN."""
+    """With passwordless disarm off the caller's code is forwarded."""
     assert hass.states.get(ENTITY_ID).attributes["code_format"] == "number"
     calls = async_mock_service(hass, "alarm_control_panel", "alarm_disarm")
 

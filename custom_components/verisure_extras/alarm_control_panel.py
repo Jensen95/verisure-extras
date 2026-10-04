@@ -1,5 +1,5 @@
-# ABOUTME: Wrapper alarm_control_panel that arms and disarms the Verisure alarm without a code.
-# ABOUTME: Mirrors the source alarm's state and injects the stored PIN into service calls.
+# ABOUTME: Wrapper alarm panel that arms/disarms the Verisure alarm without a code.
+# ABOUTME: Mirrors the source alarm state and injects the stored PIN into calls.
 from __future__ import annotations
 
 import voluptuous as vol
@@ -133,7 +133,7 @@ class VerisureExtrasAlarm(AlarmControlPanelEntity):
                 {ATTR_ENTITY_ID: self._source_entity_id, ATTR_CODE: code},
                 blocking=True,
             )
-        except (HomeAssistantError, vol.Invalid):
+        except HomeAssistantError, vol.Invalid:
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="source_call_failed",

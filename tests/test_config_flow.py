@@ -41,9 +41,7 @@ async def test_user_flow_creates_entry(hass: HomeAssistant) -> None:
 
 
 @pytest.mark.parametrize("bad_pin", ["123", "123456789", "12a4", "12 34", "abcd"])
-async def test_user_flow_rejects_invalid_pin(
-    hass: HomeAssistant, bad_pin: str
-) -> None:
+async def test_user_flow_rejects_invalid_pin(hass: HomeAssistant, bad_pin: str) -> None:
     """PINs must be 4-8 digits; anything else shows a form error."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
